@@ -346,4 +346,130 @@ export class AppComponent implements OnInit {
         console.log('API health check passed:', response);
       },
       error => {
-        this.apiStatus =
+        this.apiStatus = 'disconnected';
+        console.log('API health check failed:', error);
+      }
+    );
+  }
+
+  fetchApiUsers() {
+    this.apiService.getUsers().subscribe(
+      response => {
+        if (response.success && response.data) {
+          this.apiUsers = response.data;
+          this.showMessage('API users loaded successfully!');
+        }
+      },
+      error => {
+        console.error('Error fetching API users:', error);
+        this.showMessage('Error fetching API users');
+      }
+    );
+  }
+
+  syncData() {
+    // Sync local users to API
+    this.apiService.syncUserData(this.localUsers).subscribe(
+      response => {
+        if (response.success) {
+          this.showMessage('Data synced successfully!');
+          this.fetchApiUsers();
+        }
+      },
+      error => {
+        console.error('Error syncing data:', error);
+        this.showMessage('Error syncing data');
+      }
+    );
+  }
+
+  saveFile() {
+    const data = JSON.stringify(this.localUsers, null, 2);
+    
+    this.electronService.showSaveDialog({
+      title: 'Save Users Data',
+      defaultPath: 'users.json',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    }).subscribe(result => {
+      if (!result.canceled && result.filePath) {
+        this.electronService.writeFile(result.filePath, data).subscribe(() => {
+          this.showMessage('File saved successfully!');
+        });
+      }
+    });
+  }
+
+  loadFile() {
+    this.electronService.showOpenDialog({
+      title: 'Load Users Data',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    }).subscribe(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        this.electronService.readFile(result.filePaths[0]).subscribe(data => {
+          try {
+            const users = JSON.parse(data);
+            // Import users to local database
+            users.forEach((user: User) => {
+              this.electronService.createUser(user.name, user.email).subscribe();
+            });
+            this.loadLocalUsers();
+            this.showMessage('File loaded successfully!');
+          } catch (error) {
+            this.showMessage('Error parsing file');
+          }
+        });
+      }
+    });
+  }
+
+  exportData() {
+    const csvData = this.convertToCSV(this.localUsers);
+    
+    this.electronService.showSaveDialog({
+      title: 'Export Users Data',
+      defaultPath: 'users.csv',
+      filters: [
+        { name: 'CSV Files', extensions: ['csv'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    }).subscribe(result => {
+      if (!result.canceled && result.filePath) {
+        this.electronService.writeFile(result.filePath, csvData).subscribe(() => {
+          this.showMessage('Data exported successfully!');
+        });
+      }
+    });
+  }
+
+  private convertToCSV(users: User[]): string {
+    const headers = ['ID', 'Name', 'Email', 'Created At'];
+    const rows = users.map(user => [
+      user.id || '',
+      user.name,
+      user.email,
+      user.created_at || ''
+    ]);
+    
+    return [headers, ...rows].map(row => 
+      row.map(field => `"${field}"`).join(',')
+    ).join('\n');
+  }
+
+  private showMessage(message: string) {
+    if (this.electronService.isElectron) {
+      this.electronService.showMessageBox({
+        type: 'info',
+        title: 'Information',
+        message: message
+      }).subscribe();
+    } else {
+      alert(message);
+    }
+  }
