@@ -1,0 +1,61 @@
+<div class="container">
+  <h1>Electron + Angular Demo</h1>
+  
+  <!-- Status Message -->
+  <div class="status-message" *ngIf="statusMessage">
+    {{ statusMessage }}
+  </div>
+
+  <!-- Window Controls -->
+  <div class="window-controls">
+    <h3>Window Controls</h3>
+    <button (click)="minimizeWindow()">Minimize</button>
+    <button (click)="maximizeWindow()">Maximize/Restore</button>
+    <button (click)="closeWindow()">Close</button>
+  </div>
+
+  <!-- Local SQLite Database -->
+  <div class="local-db-section">
+    <h3>Local SQLite Database</h3>
+    <div class="input-group">
+      <input [(ngModel)]="localKey" placeholder="Enter key" />
+      <input [(ngModel)]="localValue" placeholder="Enter value" />
+      <button (click)="saveToLocal()">Save to Local DB</button>
+      <button (click)="loadLocalData()">Refresh</button>
+    </div>
+    
+    <div class="data-display">
+      <h4>Stored Data:</h4>
+      <div *ngFor="let item of localData" class="data-item">
+        <strong>{{ item.key }}:</strong> {{ item.value }}
+        <button (click)="deleteLocalItem(item.key)" class="delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HTTP Client Demo -->
+  <div class="http-section">
+    <h3>HTTP Client Demo</h3>
+    <button (click)="loadHttpData()">Load Sample Data</button>
+    
+    <div class="data-display">
+      <h4>API Data:</h4>
+      <div *ngFor="let post of httpData" class="data-item">
+        <strong>{{ post.title }}</strong>
+        <p>{{ post.body }}</p>
+      </div>
+    </div>
+  </div>
+   <div class="notification-demo-section">
+    <h3>Notification Demo</h3>
+    <button (click)="triggerNotification()">Load Sample Data</button>
+    
+    <div class="data-display">
+      <h4>API Data:</h4>
+      <div *ngFor="let post of httpData" class="data-item">
+        <strong>{{ post.title }}</strong>
+        <p>{{ post.body }}</p>
+      </div>
+    </div>
+  </div>
+</div>
