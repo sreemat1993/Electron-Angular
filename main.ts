@@ -125,3 +125,122 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+// main.js - Main Electron process
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const path = require('path');
+
+class BubbleManager {
+  constructor() {
+    this.mainWindow = null;
+    this.bubbleWindow = null;
+    this.isMinimized = false;
+  }
+
+  createMainWindow() {
+    this.mainWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
+
+    this.mainWindow.loadURL('http://localhost:4200'); // Your Angular dev server
+
+    // Handle minimize to bubble
+    this.mainWindow.on('minimize', () => {
+      this.minimizeToBubble();
+    });
+
+    this.mainWindow.on('close', (event) => {
+      if (!this.isMinimized) {
+        event.preventDefault();
+        this.minimizeToBubble();
+      }
+    });
+  }
+
+  minimizeToBubble() {
+    this.isMinimized = true;
+    this.mainWindow.hide();
+    this.createBubble();
+  }
+
+  createBubble() {
+    if (this.bubbleWindow) {
+      this.bubbleWindow.show();
+      return;
+    }
+
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    
+    this.bubbleWindow = new BrowserWindow({
+      width: 80,
+      height: 80,
+      x: width - 100,
+      y: height - 100,
+      frame: false,
+      alwaysOnTop: true,
+      resizable: false,
+      transparent: true,
+      skipTaskbar: true,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
+
+    // Load bubble HTML
+    this.bubbleWindow.loadFile(path.join(__dirname, 'bubble.html'));
+
+    // Make bubble draggable
+    this.bubbleWindow.setIgnoreMouseEvents(false);
+    
+    // Handle bubble click to restore main window
+    this.bubbleWindow.on('click', () => {
+      this.restoreMainWindow();
+    });
+
+    // Keep bubble on top and handle positioning
+    this.bubbleWindow.setAlwaysOnTop(true, 'floating');
+  }
+
+  restoreMainWindow() {
+    this.isMinimized = false;
+    this.mainWindow.show();
+    this.mainWindow.focus();
+    if (this.bubbleWindow) {
+      this.bubbleWindow.hide();
+    }
+  }
+}
+
+// Initialize app
+const bubbleManager = new BubbleManager();
+
+app.whenReady().then(() => {
+  bubbleManager.createMainWindow();
+});
+
+// IPC handlers
+ipcMain.handle('minimize-to-bubble', () => {
+  bubbleManager.minimizeToBubble();
+});
+
+ipcMain.handle('restore-from-bubble', () => {
+  bubbleManager.restoreMainWindow();
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    bubbleManager.createMainWindow();
+  }
+});
